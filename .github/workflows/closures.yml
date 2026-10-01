@@ -1,0 +1,22 @@
+# Раз в 6 часов: качает официальный GTFS IDFM (без ключа), считает закрытия и
+# публикует closures.json на GitHub Pages. CLOSURES_URL в index.html =
+# https://<user>.github.io/<repo>/closures.json
+name: closures
+on:
+  schedule: [{ cron: '15 */6 * * *' }]
+  workflow_dispatch:
+permissions: { contents: write }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: |
+          mkdir gtfs public
+          curl -sSL -o gtfs/g.zip https://eu.ftp.opendatasoft.com/stif/GTFS/IDFM-gtfs.zip
+          unzip -q gtfs/g.zip calendar.txt calendar_dates.txt routes.txt trips.txt stops.txt stop_times.txt -d gtfs
+          node --max-old-space-size=4096 tools/build_closures_gtfs.mjs --gtfs gtfs --out public/closures.json
+      - uses: peaceiris/actions-gh-pages@v4
+        with: { github_token: '${{ secrets.GITHUB_TOKEN }}', publish_dir: public, publish_branch: gh-pages }
